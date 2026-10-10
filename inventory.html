@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EMC v3 | County Inventory - Login + Dashboard + PostgreSQL</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>tailwind.config={theme:{extend:{colors:{county:'#0A1931',accent:'#00C9A7'}}}}</script>
+</head>
+<body class="bg-slate-100">
+<div id="loginScreen" class="fixed inset-0 z-[100] bg-county flex items-center justify-center p-4">
+<div class="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl">
+<div class="text-center"><div class="w-14 h-14 bg-county rounded-xl mx-auto flex items-center justify-center"><i class="fas fa-shield-halved text-accent text-xl"></i></div><h1 class="font-bold text-xl mt-3">Elgeyo Marakwet County</h1><p class="text-xs text-slate-500">LANDS, PHYSICAL PLANNING, HOUSING & URBAN DEV</p></div>
+<form onsubmit="login(event)" class="mt-6 grid gap-3 text-sm">
+<input id="loginEmail" required type="email" value="officer@emc.go.ke" class="border p-3 rounded-lg" placeholder="Email"><input id="loginPass" required type="password" value="emc2026" class="border p-3 rounded-lg" placeholder="Password"><button class="bg-county text-white py-3 rounded-full font-bold">Login</button>
+<div class="bg-slate-50 p-3 rounded-lg text-[11px]">Demo: lands@emc.go.ke / emc2026 | admin@emc.go.ke / admin123</div>
+</form>
+<p class="text-center text-[11px] text-slate-400 mt-4">DB: <span id="dbStatus" class="text-orange-500">Checking PostgreSQL...</span></p>
+</div>
+</div>
+<div id="app" class="hidden">
+<header class="bg-county text-white sticky top-0 z-40 shadow">
+<div class="max-w-[1600px] mx-auto px-4 py-3 flex justify-between items-center">
+<div class="flex items-center gap-3"><div class="w-9 h-9 bg-accent rounded flex items-center justify-center"><i class="fas fa-map text-county"></i></div><div><h1 class="font-bold text-sm">EMC Inventory v3.0</h1><p class="text-[10px] text-accent">PostgreSQL + PostGIS Connected</p></div></div>
+<div class="flex items-center gap-3"><span id="userRole" class="bg-white/10 px-3 py-1 rounded-full text-xs"></span><span id="userName" class="text-xs"></span><button onclick="logout()" class="bg-white/10 px-3 py-2 rounded-full text-xs"><i class="fas fa-power-off"></i></button></div>
+</div>
+<div class="bg-white/10 flex gap-1 px-4 py-2 text-xs overflow-auto">
+<button onclick="switchTab('dashboard')" id="tab-dashboard" class="bg-accent text-county px-4 py-2 rounded-full font-bold">Dashboard</button>
+<button onclick="switchTab('inventory')" id="tab-inventory" class="bg-white/10 px-4 py-2 rounded-full">Inventory</button>
+<button onclick="switchTab('map')" id="tab-map" class="bg-white/10 px-4 py-2 rounded-full">GIS Map</button>
+<button onclick="switchTab('network')" id="tab-network" class="bg-white/10 px-4 py-2 rounded-full">Network Colors</button>
+<button onclick="switchTab('reports')" id="tab-reports" class="bg-white/10 px-4 py-2 rounded-full">Reports</button>
+</div>
+</header>
+<div id="view-dashboard" class="max-w-[1600px] mx-auto p-4 space-y-4">
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+<div class="bg-white p-4 rounded-xl border"><p class="text-xs text-slate-500">TOTAL ASSETS</p><p id="statTotal" class="text-2xl font-bold">0</p></div>
+<div class="bg-white p-4 rounded-xl border"><p class="text-xs">LANDS</p><p id="statLands" class="text-2xl font-bold text-blue-700">0</p></div>
+<div class="bg-white p-4 rounded-xl border"><p class="text-xs">PLANNING</p><p id="statPlanning" class="text-2xl font-bold text-purple-700">0</p></div>
+<div class="bg-white p-4 rounded-xl border"><p class="text-xs">HOUSING</p><p id="statHousing" class="text-2xl font-bold text-orange-600">0</p></div>
+<div class="bg-white p-4 rounded-xl border"><p class="text-xs">URBAN DEV</p><p id="statUrban" class="text-2xl font-bold text-green-700">0</p></div>
+</div>
+<div class="grid md:grid-cols-3 gap-4">
+<div class="bg-white rounded-xl border p-4 md:col-span-2"><h3 class="font-bold text-sm mb-2">Assets by Department</h3><canvas id="deptChart" height="120"></canvas></div>
+<div class="bg-white rounded-xl border p-4"><h3 class="font-bold text-sm mb-2">Status</h3><canvas id="statusChart" height="120"></canvas></div>
+</div>
+<div class="grid md:grid-cols-2 gap-4">
+<div class="bg-white rounded-xl border p-4"><h3 class="font-bold text-sm">Recent Activities</h3><div id="activityLog" class="mt-3 space-y-2 text-xs max-h-[200px] overflow-auto"></div></div>
+<div class="bg-white rounded-xl border p-4"><h3 class="font-bold text-sm">Low Stock Alert (<10)</h3><div id="lowStock" class="mt-3 space-y-2 text-xs"></div></div>
+</div>
+</div>
+<div id="view-inventory" class="hidden max-w-[1600px] mx-auto p-4 space-y-3">
+<div class="bg-white p-3 rounded-xl border flex flex-wrap gap-2 items-center">
+<input id="search" oninput="renderTable()" placeholder="Search..." class="border px-3 py-2 rounded-lg text-sm flex-1 min-w-[200px]">
+<select id="filterDept" onchange="renderTable()" class="border px-3 py-2 rounded-lg text-sm"><option value="">All Dept</option><option>Lands</option><option>Physical Planning</option><option>Housing</option><option>Urban Development</option></select>
+<select id="filterStatus" onchange="renderTable()" class="border px-3 py-2 rounded-lg text-sm"><option value="">All Status</option><option>Available</option><option>In Use</option><option>Under Maintenance</option><option>Depleted</option></select>
+<button onclick="openAdd()" class="bg-county text-white px-5 py-2 rounded-full text-sm">+ Add Asset</button>
+<button onclick="exportCSV()" class="border px-4 py-2 rounded-full text-xs">Export CSV</button>
+</div>
+<div class="bg-white rounded-xl border overflow-hidden"><div class="overflow-auto max-h-[600px]"><table class="w-full text-sm"><thead class="sticky top-0 bg-slate-50 text-[11px] uppercase text-slate-500"><tr><th class="p-3 text-left">Asset</th><th class="p-3 text-left">Dept</th><th class="p-3 text-left">Location/Qty</th><th class="p-3 text-left">Status</th><th class="p-3 text-left">Actions</th></tr></thead><tbody id="tbody"></tbody></table></div></div>
+</div>
+<div id="view-map" class="hidden max-w-[1600px] mx-auto p-4"><div class="bg-white rounded-xl border p-3"><div id="map" class="w-full h-[70vh] rounded-lg border"></div></div></div>
+<div id="view-network" class="hidden max-w-[1600px] mx-auto p-4">
+<div class="bg-white rounded-xl border p-6">
+<h2 class="font-bold text-lg"><i class="fas fa-network-wired text-accent mr-2"></i>Networking Color Coding - T568A / T568B</h2>
+<div class="grid md:grid-cols-2 gap-6 mt-4">
+<div class="border rounded-xl p-4 bg-orange-50"><h3 class="font-bold text-orange-700">T568B - USE IN KENYA</h3><div class="mt-2 text-sm"><p>1 White/Orange - TX+</p><p>2 Orange - TX-</p><p>3 White/Green - RX+</p><p>4 Blue</p><p>5 White/Blue</p><p>6 Green - RX-</p><p>7 White/Brown</p><p>8 Brown</p></div><p class="text-xs mt-3 bg-white p-2 rounded">Straight-through: BOTH ends T568B</p></div>
+<div class="border rounded-xl p-4 bg-green-50"><h3 class="font-bold text-green-700">T568A</h3><div class="mt-2 text-sm"><p>1 White/Green</p><p>2 Green</p><p>3 White/Orange</p><p>4 Blue</p><p>5 White/Blue</p><p>6 Orange</p><p>7 White/Brown</p><p>8 Brown</p></div><p class="text-xs mt-3 bg-white p-2 rounded">Crossover: T568A + T568B</p></div>
+</div>
+<div class="mt-6 grid md:grid-cols-3 gap-3 text-xs">
+<div class="border p-3 rounded-lg"><b>Fiber 12:</b> 1 Blue, 2 Orange, 3 Green, 4 Brown, 5 Slate, 6 White, 7 Red, 8 Black, 9 Yellow, 10 Violet, 11 Rose, 12 Aqua</div>
+<div class="border p-3 rounded-lg"><b>Patch Panel:</b> Blue=Data, Yellow=Uplink/WAN, Red=Server/CCTV</div>
+<div class="border p-3 rounded-lg"><b>Jacket:</b> Gray=Indoor, Yellow=Outdoor, Black=Burial</div>
+</div>
+</div>
+</div>
+<div id="view-reports" class="hidden max-w-[1600px] mx-auto p-4 grid md:grid-cols-2 gap-4">
+<div class="bg-white rounded-xl border p-4"><h3 class="font-bold">Printable Report</h3><button onclick="window.print()" class="mt-3 bg-county text-white px-4 py-2 rounded-full text-xs">Print</button><div id="reportTable" class="mt-4 text-xs"></div></div>
+<div class="bg-white rounded-xl border p-4"><h3 class="font-bold">PostgreSQL Schema</h3><pre class="bg-slate-900 text-green-300 p-3 rounded-lg text-[11px] mt-3">CREATE TABLE county_inventory(... geom GEOMETRY...)</pre></div>
+</div>
+</div>
+<div id="addModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+<div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
+<div class="p-5 border-b flex justify-between"><h2 class="font-bold">Add / Edit Asset</h2><button onclick="closeModal()" class="w-8 h-8 bg-slate-100 rounded-full"><i class="fas fa-times"></i></button></div>
+<form id="itemForm" onsubmit="saveItem(event)" class="p-5 grid md:grid-cols-2 gap-3 text-sm">
+<input type="hidden" id="editId"><div><label class="text-xs font-bold">Asset Code*</label><input id="code" required class="w-full border p-2.5 rounded-lg mt-1"></div><div><label class="text-xs font-bold">Department*</label><select id="dept" required class="w-full border p-2.5 rounded-lg mt-1"><option>Lands</option><option>Physical Planning</option><option>Housing</option><option>Urban Development</option></select></div><div class="md:col-span-2"><label class="text-xs font-bold">Item Name*</label><input id="name" required class="w-full border p-2.5 rounded-lg mt-1"></div><div><label class="text-xs font-bold">Category</label><select id="category" class="w-full border p-2.5 rounded-lg mt-1"><option>Land Parcel</option><option>Survey Equipment</option><option>Planning Document</option><option>Building Material</option><option>Housing Unit</option><option>Urban Furniture</option><option>ICT Equipment</option><option>Network Cable</option><option>Vehicle</option><option>Other</option></select></div><div><label class="text-xs font-bold">Quantity</label><input id="qty" type="number" class="w-full border p-2.5 rounded-lg mt-1"></div><div><label class="text-xs font-bold">Sub-County</label><select id="subcounty" class="w-full border p-2.5 rounded-lg mt-1"><option>Keiyo North</option><option>Keiyo South</option><option>Marakwet East</option><option>Marakwet West</option></select></div><div><label class="text-xs font-bold">Ward</label><input id="ward" class="w-full border p-2.5 rounded-lg mt-1"></div><div><label class="text-xs font-bold">Status</label><select id="status" class="w-full border p-2.5 rounded-lg mt-1"><option>Available</option><option>In Use</option><option>Under Maintenance</option><option>Depleted</option></select></div><div><label class="text-xs font-bold">Condition</label><select id="condition" class="w-full border p-2.5 rounded-lg mt-1"><option>Good</option><option>Fair</option><option>Poor</option><option>New</option></select></div><div><label class="text-xs font-bold">Latitude</label><input id="lat" class="w-full border p-2.5 rounded-lg mt-1"></div><div><label class="text-xs font-bold">Longitude</label><input id="lng" class="w-full border p-2.5 rounded-lg mt-1"></div><div class="md:col-span-2"><label class="text-xs font-bold">Notes</label><textarea id="notes" rows="2" class="w-full border p-2.5 rounded-lg mt-1"></textarea></div><div class="md:col-span-2 flex gap-2 pt-2"><button type="submit" class="flex-1 bg-county text-white py-3 rounded-full font-bold">Save to PostgreSQL</button><button type="button" onclick="closeModal()" class="px-6 border rounded-full">Cancel</button></div>
+</form>
+</div>
+</div>
+<script>
+const API_URL='http://localhost:3000/api';
+let items=JSON.parse(localStorage.getItem('emc_inventory')||'[]');
+let currentUser=null, map, markers=[], deptChart, statusChart;
+async function login(e){ e.preventDefault(); const email=document.getElementById('loginEmail').value.trim(); const pass=document.getElementById('loginPass').value.trim(); try{ const res=await fetch(`${API_URL}/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})}); if(res.ok){ const data=await res.json(); currentUser=data.user; items=data.inventory||[]; localStorage.setItem('emc_inventory',JSON.stringify(items)); document.getElementById('dbStatus').textContent='PostgreSQL Connected ✓'; } else throw new Error(); }catch(err){ const users={ 'lands@emc.go.ke':{name:'Lands Officer',role:'Lands'}, 'housing@emc.go.ke':{name:'Housing Officer',role:'Housing'}, 'admin@emc.go.ke':{name:'County Admin',role:'Admin'}, 'officer@emc.go.ke':{name:'County Officer',role:'Lands'} }; if(!users[email]){ alert('Invalid'); return; } currentUser={email,...users[email]}; } document.getElementById('loginScreen').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); document.getElementById('userName').textContent=currentUser.name; document.getElementById('userRole').textContent=currentUser.role; if(items.length===0) loadSampleData(false); initMap(); renderAll(); }
+function logout(){ currentUser=null; document.getElementById('app').classList.add('hidden'); document.getElementById('loginScreen').classList.remove('hidden'); }
+function switchTab(t){ ['dashboard','inventory','map','network','reports'].forEach(x=>{ const v=document.getElementById('view-'+x); if(v) v.classList.add('hidden'); const tab=document.getElementById('tab-'+x); if(tab) tab.className='bg-white/10 px-4 py-2 rounded-full'; }); document.getElementById('view-'+t).classList.remove('hidden'); document.getElementById('tab-'+t).className='bg-accent text-county px-4 py-2 rounded-full font-bold'; if(t==='map' && map) setTimeout(()=>map.invalidateSize(),200); if(t==='dashboard') updateCharts(); }
+function renderAll(){ renderTable(); refreshMarkers(); updateStats(); updateCharts(); renderLogs(); }
+function updateStats(){ document.getElementById('statTotal').textContent=items.length; document.getElementById('statLands').textContent=items.filter(i=>i.dept==='Lands').length; document.getElementById('statPlanning').textContent=items.filter(i=>i.dept==='Physical Planning').length; document.getElementById('statHousing').textContent=items.filter(i=>i.dept==='Housing').length; document.getElementById('statUrban').textContent=items.filter(i=>i.dept==='Urban Development').length; const low=items.filter(i=>i.qty<10); document.getElementById('lowStock').innerHTML=low.map(i=>`<div class="flex justify-between p-2 bg-red-50 rounded"><span>${i.code}</span><span class="font-bold text-red-600">${i.qty}</span></div>`).join('')||'<p class="text-slate-400">All stocked</p>'; document.getElementById('reportTable').innerHTML=`<table class="w-full mt-2 border"><tr class="bg-slate-50"><th class="p-2 text-left">Code</th><th class="p-2">Dept</th><th class="p-2">Qty</th><th class="p-2">Status</th></tr>${items.map(i=>`<tr class="border-t"><td class="p-2">${i.code}</td><td class="p-2">${i.dept}</td><td class="p-2">${i.qty}</td><td class="p-2">${i.status}</td></tr>`).join('')}</table>`; }
+function updateCharts(){ const ctx1=document.getElementById('deptChart'); if(!ctx1) return; if(deptChart) deptChart.destroy(); deptChart=new Chart(ctx1,{type:'bar',data:{labels:['Lands','Planning','Housing','Urban'],datasets:[{data:[items.filter(i=>i.dept==='Lands').length,items.filter(i=>i.dept==='Physical Planning').length,items.filter(i=>i.dept==='Housing').length,items.filter(i=>i.dept==='Urban Development').length],backgroundColor:['#2563eb','#9333ea','#ea580c','#16a34a']}]},options:{responsive:true,plugins:{legend:{display:false}}}}); const ctx2=document.getElementById('statusChart'); if(statusChart) statusChart.destroy(); statusChart=new Chart(ctx2,{type:'doughnut',data:{labels:['Available','In Use','Maintenance','Depleted'],datasets:[{data:[items.filter(i=>i.status==='Available').length,items.filter(i=>i.status==='In Use').length,items.filter(i=>i.status==='Under Maintenance').length,items.filter(i=>i.status==='Depleted').length],backgroundColor:['#16a34a','#2563eb','#eab308','#ef4444']}]},options:{responsive:true}}); }
+function renderLogs(){ const logs=JSON.parse(localStorage.getItem('emc_logs')||'[]'); document.getElementById('activityLog').innerHTML=logs.slice(0,10).map(l=>`<div class="p-2 bg-slate-50 rounded flex justify-between"><span>${l.action} - ${l.code}</span><span class="text-slate-400">${l.time}</span></div>`).join('')||'<p class="text-slate-400">No activities</p>'; }
+let mapInit=false; function initMap(){ if(mapInit) return; map=L.map('map').setView([0.591,35.465],10); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map); map.on('click', e=>{ document.getElementById('lat').value=e.latlng.lat.toFixed(6); document.getElementById('lng').value=e.latlng.lng.toFixed(6); }); mapInit=true; refreshMarkers(); }
+function refreshMarkers(){ if(!map) return; markers.forEach(m=>map.removeLayer(m)); markers=[]; items.forEach(it=>{ if(it.lat&&it.lng){ const m=L.marker([it.lat,it.lng]).addTo(map).bindPopup(`<b>${it.code}</b><br>${it.name}`); markers.push(m); } }); }
+function renderTable(){ const q=document.getElementById('search').value.toLowerCase(); const d=document.getElementById('filterDept').value; const s=document.getElementById('filterStatus').value; const filtered=items.filter(it=>(!q||(it.code+it.name).toLowerCase().includes(q))&&(!d||it.dept===d)&&(!s||it.status===s)); document.getElementById('tbody').innerHTML=filtered.map(it=>`<tr class="border-t hover:bg-slate-50"><td class="p-3"><p class="font-bold">${it.code}</p><p class="text-xs">${it.name}</p></td><td class="p-3"><span class="px-2 py-1 rounded-full text-[11px] bg-slate-100">${it.dept}</span></td><td class="p-3 text-xs">${it.subcounty} - ${it.ward}<br><b>${it.qty} units</b></td><td class="p-3"><span class="px-2 py-1 rounded-full text-[11px] ${it.status==='Available'?'bg-green-100 text-green-700':'bg-blue-100 text-blue-700'}">${it.status}</span></td><td class="p-3"><button onclick="editItem('${it.id}')" class="w-7 h-7 bg-slate-100 rounded-full mr-1"><i class="fas fa-pen text-[10px]"></i></button><button onclick="delItem('${it.id}')" class="w-7 h-7 bg-red-50 text-red-600 rounded-full"><i class="fas fa-trash text-[10px]"></i></button></td></tr>`).join('')||`<tr><td colspan=5 class="p-8 text-center text-slate-400">No items</td></tr>`; updateStats(); }
+async function saveItem(e){ e.preventDefault(); const id=document.getElementById('editId').value; const obj={ id:id||Date.now().toString(), code:document.getElementById('code').value.trim(), dept:document.getElementById('dept').value, name:document.getElementById('name').value.trim(), category:document.getElementById('category').value, qty:parseInt(document.getElementById('qty').value||0), subcounty:document.getElementById('subcounty').value, ward:document.getElementById('ward').value, status:document.getElementById('status').value, condition:document.getElementById('condition').value, lat:parseFloat(document.getElementById('lat').value)||null, lng:parseFloat(document.getElementById('lng').value)||null, notes:document.getElementById('notes').value, date:new Date().toISOString().slice(0,10) }; try{ const url=id?`${API_URL}/inventory/${id}`:`${API_URL}/inventory`; const method=id?'PUT':'POST'; await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)}); }catch(err){} if(id){ items=items.map(x=>x.id===id?obj:x); logAction('Updated',obj.code); } else { items.unshift(obj); logAction('Added',obj.code); } localStorage.setItem('emc_inventory',JSON.stringify(items)); closeModal(); renderAll(); }
+function logAction(a,c){ const l=JSON.parse(localStorage.getItem('emc_logs')||'[]'); l.unshift({action:a,code:c,time:new Date().toLocaleString()}); localStorage.setItem('emc_logs',JSON.stringify(l.slice(0,50))); }
+function editItem(id){ const it=items.find(x=>x.id===id); document.getElementById('editId').value=it.id; document.getElementById('code').value=it.code; document.getElementById('dept').value=it.dept; document.getElementById('name').value=it.name; document.getElementById('category').value=it.category; document.getElementById('qty').value=it.qty; document.getElementById('subcounty').value=it.subcounty; document.getElementById('ward').value=it.ward; document.getElementById('status').value=it.status; document.getElementById('condition').value=it.condition; document.getElementById('lat').value=it.lat||''; document.getElementById('lng').value=it.lng||''; document.getElementById('notes').value=it.notes; document.getElementById('addModal').classList.remove('hidden'); }
+async function delItem(id){ if(!confirm('Delete?')) return; try{ await fetch(`${API_URL}/inventory/${id}`,{method:'DELETE'}); }catch(e){} items=items.filter(x=>x.id!==id); localStorage.setItem('emc_inventory',JSON.stringify(items)); renderAll(); }
+function openAdd(){ document.getElementById('itemForm').reset(); document.getElementById('editId').value=''; document.getElementById('addModal').classList.remove('hidden'); }
+function closeModal(){ document.getElementById('addModal').classList.add('hidden'); }
+function exportCSV(){ let csv='Code,Department,Name,Category,Qty,SubCounty,Ward,Status\n'; items.forEach(it=>{ csv+=`"${it.code}","${it.dept}","${it.name}","${it.category}",${it.qty},"${it.subcounty}","${it.ward}","${it.status}"\n`; }); const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='EMC_Inventory.csv'; a.click(); }
+function loadSampleData(r=true){ const s=[{id:'1',code:'EMC/LAND/001',dept:'Lands',name:'Parcel Iten Block 3/45',category:'Land Parcel',qty:1,subcounty:'Keiyo North',ward:'Tambach',status:'Available',condition:'Good',lat:0.596,lng:35.478,notes:'Lands Officer',date:'2026-10-09'},{id:'2',code:'EMC/PP/012',dept:'Physical Planning',name:'Total Station',category:'Survey Equipment',qty:2,subcounty:'Keiyo South',ward:'Iten',status:'In Use',condition:'Good',lat:0.67,lng:35.51,notes:'Field',date:'2026-10-09'},{id:'3',code:'EMC/HOU/034',dept:'Housing',name:'Cement Bags',category:'Building Material',qty:250,subcounty:'Marakwet West',ward:'Kapsowar',status:'Available',condition:'New',lat:0.985,lng:35.562,notes:'Depot',date:'2026-10-09'},{id:'4',code:'EMC/NET/001',dept:'Urban Development',name:'Cat6 Cable 305m T568B',category:'Network Cable',qty:5,subcounty:'Keiyo North',ward:'Tambach',status:'Available',condition:'New',lat:0.596,lng:35.478,notes:'Blue',date:'2026-10-09'}]; items=s; localStorage.setItem('emc_inventory',JSON.stringify(items)); if(r) renderAll(); }
+</script>
+</body>
+</html>
