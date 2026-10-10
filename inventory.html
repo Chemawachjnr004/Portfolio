@@ -1,590 +1,670 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EMC v4 | County Inventory System</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>County Department Access System</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
             county: '#0A1931',
-            accent: '#00C9A7'
+            accent: '#00C9A7',
+            soft: '#F4F7FB'
           }
         }
       }
     }
   </script>
+  <style>
+    body { background: #eef4fb; }
+    .glass { backdrop-filter: blur(6px); }
+    .status-pill { @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold; }
+    .hidden-panel { display: none; }
+  </style>
 </head>
-<body class="bg-slate-100">
+<body class="font-sans text-slate-700">
 
-  <!-- Login Screen -->
-  <div id="loginScreen" class="fixed inset-0 z-[100] bg-county flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl">
+  <div id="loginScreen" class="fixed inset-0 z-50 bg-county flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-7">
       <div class="text-center">
-        <div class="w-14 h-14 bg-county rounded-xl mx-auto flex items-center justify-center">
-          <i class="fas fa-box text-accent text-xl"></i>
+        <div class="w-16 h-16 bg-county rounded-2xl mx-auto flex items-center justify-center">
+          <i class="fas fa-landmark text-accent text-2xl"></i>
         </div>
-        <h1 class="font-bold text-2xl mt-3">EMC Inventory</h1>
-        <p class="text-xs text-slate-500 mt-1">County Asset Management System</p>
+        <h1 class="mt-4 text-2xl font-black text-county">County Management</h1>
+        <p class="text-sm text-slate-500">Department access and permissions</p>
       </div>
-      
-      <form onsubmit="login(event)" class="mt-6 grid gap-3 text-sm">
-        <input id="loginEmail" required type="email" value="officer@emc.go.ke" class="border p-3 rounded-lg" placeholder="Email">
-        <input id="loginPass" required type="password" value="emc2026" class="border p-3 rounded-lg" placeholder="Password">
-        <button type="submit" class="bg-county text-white p-3 rounded-lg font-bold hover:bg-opacity-90">Login</button>
-      </form>
-      
-      <div class="bg-slate-50 p-3 rounded-lg text-[11px] mt-3">
-        <p class="font-bold mb-1">Demo Credentials:</p>
-        <p>📧 officer@emc.go.ke / emc2026</p>
-        <p>📧 admin@emc.go.ke / admin123</p>
+
+      <div class="mt-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Select user</label>
+          <select id="loginUser" class="w-full border border-slate-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+            <option value="county-admin">County Administrator</option>
+            <option value="health-head">Health Department Head</option>
+            <option value="finance-head">Finance Department Head</option>
+            <option value="education-staff">Education Staff</option>
+            <option value="health-staff">Health Staff</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Password</label>
+          <input id="loginPassword" type="password" value="123456" class="w-full border border-slate-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+        </div>
+
+        <button onclick="login()" class="w-full bg-county text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition">Login</button>
+      </div>
+
+      <div class="mt-5 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600">
+        <p class="font-bold text-slate-700 mb-2">Demo accounts</p>
+        <div class="space-y-1">
+          <p><span class="font-semibold">County Admin:</span> 123456</p>
+          <p><span class="font-semibold">Health Head:</span> 123456</p>
+          <p><span class="font-semibold">Finance Head:</span> 123456</p>
+          <p><span class="font-semibold">Education Staff:</span> 123456</p>
+          <p><span class="font-semibold">Health Staff:</span> 123456</p>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Main App -->
   <div id="app" class="hidden">
-    <!-- Header -->
-    <header class="bg-county text-white sticky top-0 z-40 shadow">
-      <div class="max-w-[1600px] mx-auto px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 bg-accent rounded flex items-center justify-center">
-            <i class="fas fa-box text-county"></i>
+    <header class="bg-county text-white shadow-lg sticky top-0 z-40">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-11 h-11 rounded-xl bg-accent flex items-center justify-center text-county">
+            <i class="fas fa-landmark text-xl"></i>
           </div>
-          <div>
-            <h1 class="font-bold text-sm">Elgeyo Marakwet County Inventory System</h1>
-            <p class="text-[10px] text-white/70">Department of Lands, Physical Planning,Housing and Urban Development Asset Management</p>
+          <div class="min-w-0">
+            <h1 class="font-black text-sm md:text-base truncate">County Integrated System</h1>
+            <p class="text-[10px] text-white/70 uppercase tracking-wide">Departmental Access Control</p>
           </div>
         </div>
-        
-        <div class="flex items-center gap-3">
-          <span id="userRole" class="bg-white/10 px-3 py-1 rounded-full text-xs"></span>
-          <span id="userName" class="text-xs"></span>
-          <button onclick="logout()" class="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-xs transition">Logout</button>
+
+        <div class="flex items-center gap-2 md:gap-3">
+          <span id="userRoleBadge" class="bg-white/10 border border-white/10 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide"></span>
+          <span id="userName" class="hidden md:inline text-sm font-medium"></span>
+          <button onclick="logout()" class="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl text-xs font-bold transition">Logout</button>
         </div>
       </div>
 
-      <!-- Navigation Tabs -->
-      <div class="bg-white/10 flex gap-1 px-4 py-2 text-xs overflow-auto">
-        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="bg-accent text-county px-4 py-2 rounded-full font-bold">Dashboard</button>
-        <button onclick="switchTab('inventory')" id="tab-inventory" class="bg-white/10 px-4 py-2 rounded-full hover:bg-white/20 transition">Inventory</button>
-        <button onclick="switchTab('reports')" id="tab-reports" class="bg-white/10 px-4 py-2 rounded-full hover:bg-white/20 transition">Reports</button>
-      </div>
+      <nav class="max-w-7xl mx-auto px-4 pb-3">
+        <div class="flex gap-2 overflow-auto pb-1">
+          <button data-tab="dashboard" class="tab-btn px-4 py-2 rounded-full text-xs font-bold bg-accent text-county">Dashboard</button>
+          <button data-tab="records" class="tab-btn px-4 py-2 rounded-full text-xs font-bold bg-white/10 text-white hover:bg-white/20">Records</button>
+          <button data-tab="staff" class="tab-btn px-4 py-2 rounded-full text-xs font-bold bg-white/10 text-white hover:bg-white/20">Staff</button>
+          <button data-tab="permissions" class="tab-btn px-4 py-2 rounded-full text-xs font-bold bg-white/10 text-white hover:bg-white/20">Permissions</button>
+        </div>
+      </nav>
     </header>
 
-    <!-- Dashboard View -->
-    <div id="view-dashboard" class="max-w-[1600px] mx-auto p-4 space-y-4">
-      <!-- Stats Cards -->
-      <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div class="bg-white p-4 rounded-xl border hover:shadow-md transition">
-          <p class="text-xs text-slate-500 font-bold">TOTAL ASSETS</p>
-          <p id="statTotal" class="text-2xl font-bold mt-1">0</p>
-        </div>
-        <div class="bg-white p-4 rounded-xl border hover:shadow-md transition">
-          <p class="text-xs text-slate-500 font-bold">LANDS</p>
-          <p id="statLands" class="text-2xl font-bold text-blue-700 mt-1">0</p>
-        </div>
-        <div class="bg-white p-4 rounded-xl border hover:shadow-md transition">
-          <p class="text-xs text-slate-500 font-bold">PLANNING</p>
-          <p id="statPlanning" class="text-2xl font-bold text-purple-700 mt-1">0</p>
-        </div>
-        <div class="bg-white p-4 rounded-xl border hover:shadow-md transition">
-          <p class="text-xs text-slate-500 font-bold">HOUSING</p>
-          <p id="statHousing" class="text-2xl font-bold text-orange-600 mt-1">0</p>
-        </div>
-        <div class="bg-white p-4 rounded-xl border hover:shadow-md transition">
-          <p class="text-xs text-slate-500 font-bold">URBAN DEV</p>
-          <p id="statUrban" class="text-2xl font-bold text-green-700 mt-1">0</p>
-        </div>
-      </div>
-
-      <!-- Charts -->
-      <div class="grid md:grid-cols-3 gap-4">
-        <div class="bg-white rounded-xl border p-4 md:col-span-2">
-          <h3 class="font-bold text-sm mb-3">Assets by Department</h3>
-          <div style="position: relative; height: 200px;">
-            <canvas id="deptChart"></canvas>
+    <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-4">
+      <section id="view-dashboard" class="space-y-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <p class="text-[11px] uppercase tracking-wide text-slate-500 font-bold">Total Records</p>
+            <p id="statTotal" class="mt-2 text-3xl font-black text-county">0</p>
+          </div>
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <p class="text-[11px] uppercase tracking-wide text-slate-500 font-bold">Approved</p>
+            <p id="statApproved" class="mt-2 text-3xl font-black text-emerald-600">0</p>
+          </div>
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <p class="text-[11px] uppercase tracking-wide text-slate-500 font-bold">Pending</p>
+            <p id="statPending" class="mt-2 text-3xl font-black text-amber-500">0</p>
+          </div>
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <p class="text-[11px] uppercase tracking-wide text-slate-500 font-bold">Departments</p>
+            <p id="statDepartments" class="mt-2 text-3xl font-black text-sky-600">0</p>
           </div>
         </div>
-        <div class="bg-white rounded-xl border p-4">
-          <h3 class="font-bold text-sm mb-3">Status Distribution</h3>
-          <div style="position: relative; height: 200px;">
-            <canvas id="statusChart"></canvas>
+
+        <div class="grid lg:grid-cols-3 gap-4">
+          <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-black text-lg text-county">Department Activity</h2>
+              <span id="chartSubtitle" class="text-xs text-slate-500">Department records</span>
+            </div>
+            <div style="position: relative; height: 260px;">
+              <canvas id="departmentChart"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+            <h2 class="font-black text-lg text-county mb-3">Status Summary</h2>
+            <div style="position: relative; height: 260px;">
+              <canvas id="statusChart"></canvas>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Activity & Alerts -->
-      <div class="grid md:grid-cols-2 gap-4">
-        <div class="bg-white rounded-xl border p-4">
-          <h3 class="font-bold text-sm mb-3">Recent Activities</h3>
-          <div id="activityLog" class="space-y-2 text-xs max-h-[250px] overflow-auto"></div>
-        </div>
-        <div class="bg-white rounded-xl border p-4">
-          <h3 class="font-bold text-sm mb-3">Low Stock Alert (<5 items)</h3>
-          <div id="lowStock" class="space-y-2 text-xs"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Inventory View -->
-    <div id="view-inventory" class="hidden max-w-[1600px] mx-auto p-4 space-y-3">
-      <!-- Filters & Actions -->
-      <div class="bg-white p-4 rounded-xl border flex flex-wrap gap-3 items-center">
-        <input id="search" oninput="renderTable()" placeholder="Search assets..." class="border px-3 py-2 rounded-lg text-sm flex-1 min-w-[200px]">
-        <select id="filterDept" onchange="renderTable()" class="border px-3 py-2 rounded-lg text-sm">
-          <option value="">All Departments</option>
-          <option>Lands</option>
-          <option>Physical Planning</option>
-          <option>Housing</option>
-          <option>Urban Development</option>
-        </select>
-        <select id="filterStatus" onchange="renderTable()" class="border px-3 py-2 rounded-lg text-sm">
-          <option value="">All Status</option>
-          <option>Available</option>
-          <option>In Use</option>
-          <option>Under Maintenance</option>
-          <option>Retired</option>
-        </select>
-        <button onclick="openAdd()" class="bg-county text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-opacity-90">+ Add Asset</button>
-        <button onclick="exportCSV()" class="border border-county text-county px-4 py-2 rounded-full text-sm hover:bg-slate-50">📥 Export CSV</button>
-      </div>
-
-      <!-- Table -->
-      <div class="bg-white rounded-xl border overflow-hidden">
-        <div class="overflow-auto max-h-[600px]">
-          <table class="w-full text-sm">
-            <thead class="sticky top-0 bg-slate-100 text-slate-700 font-bold text-[11px] uppercase border-b">
-              <tr>
-                <th class="px-4 py-2 text-left">Code</th>
-                <th class="px-4 py-2 text-left">Name</th>
-                <th class="px-4 py-2 text-left">Department</th>
-                <th class="px-4 py-2 text-center">Qty</th>
-                <th class="px-4 py-2 text-left">Category</th>
-                <th class="px-4 py-2 text-left">Status</th>
-                <th class="px-4 py-2 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody" class="divide-y text-sm"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Reports View -->
-    <div id="view-reports" class="hidden max-w-[1600px] mx-auto p-4">
-      <div class="grid md:grid-cols-2 gap-4">
-        <div class="bg-white rounded-xl border p-4">
-          <h3 class="font-bold text-lg mb-4">
-            <i class="fas fa-print text-accent mr-2"></i>Print Report
-          </h3>
-          <p class="text-sm text-slate-600 mb-4">Generate and print inventory report</p>
-          <button onclick="window.print()" class="bg-county text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-opacity-90">
-            <i class="fas fa-print mr-2"></i>Print
-          </button>
+      <section id="view-records" class="hidden-panel space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+          <div class="flex flex-col md:flex-row gap-3 md:items-center">
+            <input id="searchInput" type="text" placeholder="Search records..." class="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+            <select id="filterDept" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+              <option value="all">All departments</option>
+            </select>
+            <select id="filterStatus" class="border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+              <option value="all">All statuses</option>
+              <option value="Approved">Approved</option>
+              <option value="Pending">Pending</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+            <button id="addRecordBtn" onclick="openAddRecordModal()" class="bg-county text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-800 hidden">+ Add Record</button>
+          </div>
         </div>
 
-        <div class="bg-white rounded-xl border p-4">
-          <h3 class="font-bold text-lg mb-4">
-            <i class="fas fa-download text-accent mr-2"></i>Export Data
-          </h3>
-          <p class="text-sm text-slate-600 mb-4">Download inventory as CSV file</p>
-          <button onclick="exportCSV()" class="bg-county text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-opacity-90">
-            <i class="fas fa-download mr-2"></i>Download CSV
-          </button>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-auto max-h-[620px]">
+            <table class="min-w-full text-sm">
+              <thead class="bg-slate-100 text-slate-700 text-[11px] uppercase tracking-wide">
+                <tr>
+                  <th class="px-4 py-3 text-left">Title</th>
+                  <th class="px-4 py-3 text-left">Department</th>
+                  <th class="px-4 py-3 text-left">Category</th>
+                  <th class="px-4 py-3 text-left">Owner</th>
+                  <th class="px-4 py-3 text-left">Status</th>
+                  <th class="px-4 py-3 text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="recordsTableBody"></tbody>
+            </table>
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <section id="view-staff" class="hidden-panel space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-black text-lg text-county">Staff Directory</h2>
+            <button onclick="openAddStaffModal()" class="bg-accent text-county px-4 py-2 rounded-xl font-bold text-sm hover:bg-emerald-300">+ Register Staff</button>
+          </div>
+          <div id="staffTable" class="space-y-2"></div>
+        </div>
+      </section>
+
+      <section id="view-permissions" class="hidden-panel space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+          <h2 class="font-black text-lg text-county mb-4">Access Permissions</h2>
+          <div id="permissionsList" class="space-y-3"></div>
+        </div>
+      </section>
+    </main>
   </div>
 
-  <!-- Add/Edit Modal -->
-  <div id="addModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
-      <div class="p-5 border-b flex justify-between items-center sticky top-0 bg-white">
-        <h2 class="font-bold text-lg">Add / Edit Asset</h2>
-        <button onclick="closeModal()" class="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center">
-          <i class="fas fa-times"></i>
-        </button>
+  <div id="recordModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-5 shadow-2xl">
+      <div class="flex items-center justify-between border-b pb-3 mb-4">
+        <h3 id="recordModalTitle" class="font-black text-xl text-county">Add Record</h3>
+        <button onclick="closeRecordModal()" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200"><i class="fas fa-times"></i></button>
       </div>
 
-      <form id="itemForm" onsubmit="saveItem(event)" class="p-5 grid md:grid-cols-2 gap-4">
-        <input type="hidden" id="editId">
-        
-        <div>
-          <label class="text-xs font-bold text-slate-700">Asset Code *</label>
-          <input id="code" required class="w-full border px-3 py-2 rounded-lg mt-1 text-sm" placeholder="e.g., EMC/LAND/001">
+      <form id="recordForm" onsubmit="saveRecord(event)" class="grid md:grid-cols-2 gap-4">
+        <input type="hidden" id="recordId" />
+
+        <div class="md:col-span-2">
+          <label class="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Title</label>
+          <input id="recordTitle" required class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
         </div>
 
         <div>
-          <label class="text-xs font-bold text-slate-700">Department *</label>
-          <select id="dept" required class="w-full border px-3 py-2 rounded-lg mt-1 text-sm">
-            <option>Lands</option>
-            <option>Physical Planning</option>
-            <option>Housing</option>
-            <option>Urban Development</option>
+          <label class="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Department</label>
+          <select id="recordDept" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+            <option>Health</option>
+            <option>Finance</option>
+            <option>Education</option>
+            <option>Infrastructure</option>
+            <option>Public Works</option>
           </select>
         </div>
 
-        <div class="md:col-span-2">
-          <label class="text-xs font-bold text-slate-700">Asset Name *</label>
-          <input id="name" required class="w-full border px-3 py-2 rounded-lg mt-1 text-sm" placeholder="e.g., Office Equipment">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Category</label>
+          <input id="recordCategory" required class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
         </div>
 
         <div>
-          <label class="text-xs font-bold text-slate-700">Category *</label>
-          <input id="category" required class="w-full border px-3 py-2 rounded-lg mt-1 text-sm" placeholder="e.g., Furniture">
+          <label class="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Owner</label>
+          <input id="recordOwner" required class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
         </div>
 
         <div>
-          <label class="text-xs font-bold text-slate-700">Quantity *</label>
-          <input id="qty" type="number" required min="1" class="w-full border px-3 py-2 rounded-lg mt-1 text-sm" placeholder="1">
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-slate-700">Sub-County</label>
-          <input id="subcounty" class="w-full border px-3 py-2 rounded-lg mt-1 text-sm" placeholder="Optional">
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-slate-700">Ward</label>
-          <input id="ward" class="w-full border px-3 py-2 rounded-lg mt-1 text-sm" placeholder="Optional">
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-slate-700">Status *</label>
-          <select id="status" required class="w-full border px-3 py-2 rounded-lg mt-1 text-sm">
-            <option>Available</option>
-            <option>In Use</option>
-            <option>Under Maintenance</option>
-            <option>Retired</option>
+          <label class="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Status</label>
+          <select id="recordStatus" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+            <option>Approved</option>
+            <option>Pending</option>
+            <option>Rejected</option>
           </select>
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="text-xs font-bold text-slate-700">Notes</label>
-          <textarea id="notes" class="w-full border px-3 py-2 rounded-lg mt-1 text-sm" rows="3" placeholder="Additional notes..."></textarea>
         </div>
 
         <div class="md:col-span-2 flex gap-2 pt-2">
-          <button type="submit" class="flex-1 bg-county text-white py-2 rounded-lg font-bold hover:bg-opacity-90">Save Asset</button>
-          <button type="button" onclick="closeModal()" class="flex-1 border border-slate-300 py-2 rounded-lg hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="flex-1 bg-county text-white py-2.5 rounded-xl font-bold hover:bg-slate-800">Save</button>
+          <button type="button" onclick="closeRecordModal()" class="flex-1 border border-slate-200 py-2.5 rounded-xl font-bold hover:bg-slate-50">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="staffModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-5 shadow-2xl">
+      <div class="flex items-center justify-between border-b pb-3 mb-4">
+        <h3 class="font-black text-xl text-county">Register Staff</h3>
+        <button onclick="closeStaffModal()" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200"><i class="fas fa-times"></i></button>
+      </div>
+
+      <form id="staffForm" onsubmit="saveStaff(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Full name</label>
+          <input id="staffName" required class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Department</label>
+          <select id="staffDept" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+            <option>Health</option>
+            <option>Finance</option>
+            <option>Education</option>
+            <option>Infrastructure</option>
+            <option>Public Works</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Role</label>
+          <select id="staffRole" class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+            <option value="staff">Department Staff</option>
+            <option value="department_head">Department Head</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Permissions</label>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <label class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2"><input type="checkbox" value="view_records" class="staff-permission"> View records</label>
+            <label class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2"><input type="checkbox" value="create_records" class="staff-permission"> Create records</label>
+            <label class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2"><input type="checkbox" value="edit_records" class="staff-permission"> Edit records</label>
+            <label class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2"><input type="checkbox" value="approve_records" class="staff-permission"> Approve</label>
+            <label class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2"><input type="checkbox" value="export_reports" class="staff-permission"> Export reports</label>
+            <label class="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2"><input type="checkbox" value="manage_staff" class="staff-permission"> Manage staff</label>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="flex-1 bg-county text-white py-2.5 rounded-xl font-bold hover:bg-slate-800">Register</button>
+          <button type="button" onclick="closeStaffModal()" class="flex-1 border border-slate-200 py-2.5 rounded-xl font-bold hover:bg-slate-50">Cancel</button>
         </div>
       </form>
     </div>
   </div>
 
   <script>
-    // Initialize
-    let items = JSON.parse(localStorage.getItem('emc_inventory') || '[]');
+    const departmentMeta = {
+      'Health': { label: 'Health', color: '#0ea5e9' },
+      'Finance': { label: 'Finance', color: '#8b5cf6' },
+      'Education': { label: 'Education', color: '#f59e0b' },
+      'Infrastructure': { label: 'Infrastructure', color: '#10b981' },
+      'Public Works': { label: 'Public Works', color: '#ef4444' }
+    };
+
+    const users = [
+      { id: 'county-admin', name: 'County Administrator', role: 'admin', department: 'All', permissions: ['view_all','create_records','edit_records','approve_records','export_reports','manage_staff'] },
+      { id: 'health-head', name: 'Dr. Amina Wanjiku', role: 'department_head', department: 'Health', permissions: ['view_records','create_records','edit_records','approve_records','export_reports','manage_staff'] },
+      { id: 'finance-head', name: 'John Kibet', role: 'department_head', department: 'Finance', permissions: ['view_records','create_records','edit_records','approve_records','export_reports','manage_staff'] },
+      { id: 'education-staff', name: 'Mary Njeri', role: 'staff', department: 'Education', permissions: ['view_records'] },
+      { id: 'health-staff', name: 'Peter Otieno', role: 'staff', department: 'Health', permissions: ['view_records','create_records'] }
+    ];
+
+    const records = [
+      { id: 1, title: 'Medical Supplies Request', department: 'Health', category: 'Procurement', owner: 'Clinic Ward', status: 'Approved' },
+      { id: 2, title: 'Budget Reallocation', department: 'Finance', category: 'Budget', owner: 'Treasury Unit', status: 'Pending' },
+      { id: 3, title: 'School Feeding Budget', department: 'Education', category: 'Operations', owner: 'Education Office', status: 'Approved' },
+      { id: 4, title: 'Road Repair Plan', department: 'Public Works', category: 'Infrastructure', owner: 'Roads Division', status: 'Pending' },
+      { id: 5, title: 'Vaccination Drive Report', department: 'Health', category: 'Health Services', owner: 'Public Health', status: 'Approved' },
+      { id: 6, title: 'School Lab Equipment', department: 'Education', category: 'Assets', owner: 'School Admin', status: 'Rejected' }
+    ];
+
     let currentUser = null;
-    let deptChart, statusChart;
+    let departmentChart;
+    let statusChart;
 
-    // Login Function
-    async function login(e) {
-      e.preventDefault();
-      const email = document.getElementById('loginEmail').value.trim();
-      const pass = document.getElementById('loginPass').value.trim();
-
-      // Demo authentication
-      const users = {
-        'officer@emc.go.ke': { pass: 'emc2026', role: 'Officer' },
-        'admin@emc.go.ke': { pass: 'admin123', role: 'Admin' }
-      };
-
-      if (users[email] && users[email].pass === pass) {
-        currentUser = { email, role: users[email].role };
-        document.getElementById('userName').textContent = email;
-        document.getElementById('userRole').textContent = users[email].role;
-        
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('app').classList.remove('hidden');
-        
-        loadSampleData();
-        renderAll();
-        initCharts();
-        logAction('LOGIN', email);
-      } else {
-        alert('Invalid credentials');
-      }
+    function getCurrentUser() {
+      return users.find(u => u.id === document.getElementById('loginUser').value) || users[0];
     }
 
-    // Logout Function
+    function login() {
+      const selectedUser = getCurrentUser();
+      const password = document.getElementById('loginPassword').value;
+
+      if (password !== '123456') {
+        alert('Incorrect password. Use the demo password 123456.');
+        return;
+      }
+
+      currentUser = selectedUser;
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      renderHeader();
+      renderAll();
+    }
+
     function logout() {
       currentUser = null;
-      document.getElementById('app').classList.add('hidden');
       document.getElementById('loginScreen').classList.remove('hidden');
-      document.getElementById('loginEmail').value = 'officer@emc.go.ke';
-      document.getElementById('loginPass').value = 'emc2026';
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('loginPassword').value = '123456';
+      resetTabs();
     }
 
-    // Switch Tabs
+    function renderHeader() {
+      const badgeText = currentUser.role === 'admin' ? 'County Admin' : currentUser.role === 'department_head' ? 'Department Head' : 'Department Staff';
+      document.getElementById('userRoleBadge').textContent = badgeText;
+      document.getElementById('userName').textContent = currentUser.name + ' • ' + currentUser.department;
+    }
+
+    function resetTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.className = 'tab-btn px-4 py-2 rounded-full text-xs font-bold bg-white/10 text-white hover:bg-white/20';
+      });
+      document.querySelector('[data-tab="dashboard"]').className = 'tab-btn px-4 py-2 rounded-full text-xs font-bold bg-accent text-county';
+      document.getElementById('view-dashboard').classList.remove('hidden-panel');
+      document.getElementById('view-records').classList.add('hidden-panel');
+      document.getElementById('view-staff').classList.add('hidden-panel');
+      document.getElementById('view-permissions').classList.add('hidden-panel');
+    }
+
     function switchTab(tab) {
-      ['dashboard', 'inventory', 'reports'].forEach(x => {
-        const view = document.getElementById('view-' + x);
-        const tabBtn = document.getElementById('tab-' + x);
-        if (view) view.classList.add('hidden');
-        if (tabBtn) tabBtn.classList.add('bg-white/10');
-        if (tabBtn) tabBtn.classList.remove('bg-accent', 'text-county');
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        const active = btn.dataset.tab === tab;
+        btn.className = active
+          ? 'tab-btn px-4 py-2 rounded-full text-xs font-bold bg-accent text-county'
+          : 'tab-btn px-4 py-2 rounded-full text-xs font-bold bg-white/10 text-white hover:bg-white/20';
       });
 
-      const activeView = document.getElementById('view-' + tab);
-      const activeTab = document.getElementById('tab-' + tab);
-      if (activeView) activeView.classList.remove('hidden');
-      if (activeTab) {
-        activeTab.classList.remove('bg-white/10');
-        activeTab.classList.add('bg-accent', 'text-county');
-      }
+      const tabs = ['dashboard', 'records', 'staff', 'permissions'];
+      tabs.forEach(name => {
+        const panel = document.getElementById('view-' + name);
+        if (panel) {
+          panel.classList.toggle('hidden-panel', name !== tab);
+        }
+      });
     }
 
-    // Render All
-    function renderAll() {
-      renderTable();
-      updateStats();
-      updateCharts();
-      renderLogs();
+    function can(permission) {
+      if (!currentUser) return false;
+      if (currentUser.role === 'admin') return true;
+      return currentUser.permissions.includes(permission);
     }
 
-    // Update Statistics
-    function updateStats() {
-      document.getElementById('statTotal').textContent = items.length;
-      document.getElementById('statLands').textContent = items.filter(i => i.dept === 'Lands').length;
-      document.getElementById('statPlanning').textContent = items.filter(i => i.dept === 'Physical Planning').length;
-      document.getElementById('statHousing').textContent = items.filter(i => i.dept === 'Housing').length;
-      document.getElementById('statUrban').textContent = items.filter(i => i.dept === 'Urban Development').length;
+    function getAllowedRecords() {
+      if (!currentUser) return [];
+      if (currentUser.role === 'admin') return records;
+      return records.filter(item => item.department === currentUser.department);
     }
 
-    // Initialize Charts
-    function initCharts() {
-      updateCharts();
+    function getVisibleDepartments() {
+      if (!currentUser) return [];
+      if (currentUser.role === 'admin') return Object.keys(departmentMeta);
+      return [currentUser.department];
     }
 
-    // Update Charts
-    function updateCharts() {
-      // Department Chart
-      const ctx1 = document.getElementById('deptChart');
-      if (ctx1) {
-        if (deptChart) deptChart.destroy();
-        deptChart = new Chart(ctx1, {
-          type: 'bar',
-          data: {
-            labels: ['Lands', 'Planning', 'Housing', 'Urban Dev'],
-            datasets: [{
-              label: 'Assets',
-              data: [
-                items.filter(i => i.dept === 'Lands').length,
-                items.filter(i => i.dept === 'Physical Planning').length,
-                items.filter(i => i.dept === 'Housing').length,
-                items.filter(i => i.dept === 'Urban Development').length
-              ],
-              backgroundColor: ['#1e40af', '#7c3aed', '#ea580c', '#15803d']
-            }]
-          },
-          options: { 
-            responsive: true, 
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            plugins: { 
-              legend: { display: false }
-            },
-            scales: {
-              x: {
-                beginAtZero: true,
-                max: Math.max(5, items.filter(i => i.dept === 'Lands').length, items.filter(i => i.dept === 'Physical Planning').length, items.filter(i => i.dept === 'Housing').length, items.filter(i => i.dept === 'Urban Development').length)
-              }
-            }
+    function getFilteredRecords() {
+      const search = document.getElementById('searchInput')?.value.toLowerCase() || '';
+      const deptFilter = document.getElementById('filterDept')?.value || 'all';
+      const statusFilter = document.getElementById('filterStatus')?.value || 'all';
+
+      return getAllowedRecords().filter(item => {
+        const matchesSearch = !search || item.title.toLowerCase().includes(search) || item.owner.toLowerCase().includes(search);
+        const matchesDept = deptFilter === 'all' || item.department === deptFilter;
+        const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+        return matchesSearch && matchesDept && matchesStatus;
+      });
+    }
+
+    function renderDashboard() {
+      const allowed = getAllowedRecords();
+      const approved = allowed.filter(r => r.status === 'Approved').length;
+      const pending = allowed.filter(r => r.status === 'Pending').length;
+      document.getElementById('statTotal').textContent = allowed.length;
+      document.getElementById('statApproved').textContent = approved;
+      document.getElementById('statPending').textContent = pending;
+      document.getElementById('statDepartments').textContent = getVisibleDepartments().length;
+
+      const departmentLabels = getVisibleDepartments();
+      const deptCounts = departmentLabels.map(name => allowed.filter(r => r.department === name).length);
+      const chartSubtitle = currentUser.role === 'admin' ? 'All counties' : currentUser.department + ' department';
+      document.getElementById('chartSubtitle').textContent = chartSubtitle;
+
+      if (departmentChart) departmentChart.destroy();
+      departmentChart = new Chart(document.getElementById('departmentChart'), {
+        type: 'bar',
+        data: {
+          labels: departmentLabels,
+          datasets: [{
+            label: 'Records',
+            data: deptCounts,
+            backgroundColor: departmentLabels.map(name => departmentMeta[name].color || '#00C9A7'),
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#e2e8f0' } },
+            x: { grid: { display: false } }
           }
-        });
-      }
+        }
+      });
 
-      // Status Chart
-      const ctx2 = document.getElementById('statusChart');
-      if (ctx2) {
-        if (statusChart) statusChart.destroy();
-        statusChart = new Chart(ctx2, {
-          type: 'doughnut',
-          data: {
-            labels: ['Available', 'In Use', 'Maintenance', 'Retired'],
-            datasets: [{
-              data: [
-                items.filter(i => i.status === 'Available').length,
-                items.filter(i => i.status === 'In Use').length,
-                items.filter(i => i.status === 'Under Maintenance').length,
-                items.filter(i => i.status === 'Retired').length
-              ],
-              backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']
-            }]
-          },
-          options: { 
-            responsive: true, 
-            maintainAspectRatio: false
-          }
-        });
-      }
+      const statusCounts = ['Approved', 'Pending', 'Rejected'].map(status => allowed.filter(r => r.status === status).length);
+      if (statusChart) statusChart.destroy();
+      statusChart = new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Approved', 'Pending', 'Rejected'],
+          datasets: [{
+            data: statusCounts,
+            backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
     }
 
-    // Render Activity Logs
-    function renderLogs() {
-      const logs = JSON.parse(localStorage.getItem('emc_logs') || '[]');
-      const html = logs.slice(0, 15).map(l => 
-        `<div class="p-2 bg-slate-50 rounded border-l-2 border-accent">
-          <p class="font-bold text-[10px]">${l.action}</p>
-          <p class="text-[10px] text-slate-600">${l.code || l.email}</p>
-          <p class="text-[10px] text-slate-400">${l.time}</p>
-        </div>`
-      ).join('');
-      document.getElementById('activityLog').innerHTML = html || '<p class="text-slate-400">No activities yet</p>';
-    }
+    function renderRecordsTable() {
+      const filtered = getFilteredRecords();
+      const filterDept = document.getElementById('filterDept');
+      filterDept.innerHTML = '<option value="all">All departments</option>' + getVisibleDepartments().map(dep => `<option value="${dep}">${dep}</option>`).join('');
 
-    // Render Table
-    function renderTable() {
-      const q = document.getElementById('search').value.toLowerCase();
-      const d = document.getElementById('filterDept').value;
-      const s = document.getElementById('filterStatus').value;
-      
-      const filtered = items.filter(i =>
-        (i.code.toLowerCase().includes(q) || i.name.toLowerCase().includes(q)) &&
-        (!d || i.dept === d) &&
-        (!s || i.status === s)
-      );
-
-      const html = filtered.map(it => `
-        <tr class="hover:bg-slate-50">
-          <td class="px-4 py-2 font-bold text-accent">${it.code}</td>
-          <td class="px-4 py-2">${it.name}</td>
-          <td class="px-4 py-2 text-sm">${it.dept}</td>
-          <td class="px-4 py-2 text-center font-bold">${it.qty}</td>
-          <td class="px-4 py-2 text-sm">${it.category}</td>
-          <td class="px-4 py-2">
-            <span class="px-2 py-1 rounded-full text-xs font-bold 
-              ${it.status === 'Available' ? 'bg-green-100 text-green-700' : 
-                it.status === 'In Use' ? 'bg-blue-100 text-blue-700' :
-                it.status === 'Under Maintenance' ? 'bg-yellow-100 text-yellow-700' :
-                'bg-red-100 text-red-700'}">
-              ${it.status}
+      document.getElementById('recordsTableBody').innerHTML = filtered.map(record => `
+        <tr class="border-b border-slate-200 hover:bg-slate-50">
+          <td class="px-4 py-3 font-bold text-county">${record.title}</td>
+          <td class="px-4 py-3">${record.department}</td>
+          <td class="px-4 py-3">${record.category}</td>
+          <td class="px-4 py-3">${record.owner}</td>
+          <td class="px-4 py-3">
+            <span class="status-pill ${record.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : record.status === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">
+              ${record.status}
             </span>
           </td>
-          <td class="px-4 py-2 text-center">
-            <button onclick="editItem('${it.id}')" class="text-blue-600 hover:text-blue-800 mr-2">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button onclick="delItem('${it.id}')" class="text-red-600 hover:text-red-800">
-              <i class="fas fa-trash"></i>
-            </button>
+          <td class="px-4 py-3 space-x-2">
+            <button onclick="editRecord(${record.id})" class="text-blue-600 hover:text-blue-800 ${can('edit_records') ? '' : 'opacity-40 pointer-events-none'}"><i class="fas fa-edit"></i></button>
+            <button onclick="deleteRecord(${record.id})" class="text-red-600 hover:text-red-800 ${can('edit_records') ? '' : 'opacity-40 pointer-events-none'}"><i class="fas fa-trash"></i></button>
           </td>
         </tr>
-      `).join('');
+      `).join('') || '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">No records found</td></tr>';
 
-      document.getElementById('tableBody').innerHTML = html || '<tr><td colspan="7" class="px-4 py-8 text-center text-slate-400">No assets found</td></tr>';
+      const canCreate = can('create_records') || currentUser.role === 'admin';
+      document.getElementById('addRecordBtn').classList.toggle('hidden', !canCreate);
     }
 
-    // Save Item
-    async function saveItem(e) {
-      e.preventDefault();
-      const id = document.getElementById('editId').value;
-      const obj = {
-        id: id || Date.now().toString(),
-        code: document.getElementById('code').value.trim(),
-        dept: document.getElementById('dept').value,
-        name: document.getElementById('name').value.trim(),
-        category: document.getElementById('category').value.trim(),
-        qty: parseInt(document.getElementById('qty').value),
-        subcounty: document.getElementById('subcounty').value.trim(),
-        ward: document.getElementById('ward').value.trim(),
-        status: document.getElementById('status').value,
-        notes: document.getElementById('notes').value.trim()
+    function renderStaffTable() {
+      const staffList = users.filter(user => user.role !== 'admin');
+      const visibleStaff = currentUser.role === 'admin' ? staffList : staffList.filter(user => user.department === currentUser.department);
+
+      document.getElementById('staffTable').innerHTML = visibleStaff.map(person => `
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border border-slate-200 rounded-2xl p-3">
+          <div>
+            <p class="font-bold text-county">${person.name}</p>
+            <p class="text-xs text-slate-500">${person.role === 'department_head' ? 'Department Head' : 'Department Staff'} • ${person.department}</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            ${(person.permissions || []).map(permission => `
+              <span class="text-[10px] uppercase tracking-wide bg-slate-100 border border-slate-200 rounded-full px-2 py-1 font-bold text-slate-600">${permission.replace('_', ' ')}</span>
+            `).join('') || '<span class="text-[10px] uppercase tracking-wide bg-slate-100 border border-slate-200 rounded-full px-2 py-1 font-bold text-slate-600">No access</span>'}
+          </div>
+        </div>
+      `).join('') || '<p class="text-slate-400 text-sm">No staff in your department.</p>';
+    }
+
+    function renderPermissions() {
+      const permissions = [
+        { key: 'view_records', label: 'View records', description: 'See departmental information' },
+        { key: 'create_records', label: 'Create records', description: 'Add new records' },
+        { key: 'edit_records', label: 'Edit records', description: 'Update existing records' },
+        { key: 'approve_records', label: 'Approve records', description: 'Approve or reject submissions' },
+        { key: 'export_reports', label: 'Export reports', description: 'Download reports' },
+        { key: 'manage_staff', label: 'Manage staff', description: 'Manage registration and user access' }
+      ];
+
+      const list = permissions.map(item => {
+        const assigned = (currentUser.permissions || []).includes(item.key) || currentUser.role === 'admin';
+        return `
+          <div class="flex items-center justify-between border border-slate-200 rounded-2xl p-3">
+            <div>
+              <p class="font-bold text-county">${item.label}</p>
+              <p class="text-xs text-slate-500">${item.description}</p>
+            </div>
+            <span class="status-pill ${assigned ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}">
+              ${assigned ? 'Granted' : 'Blocked'}
+            </span>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('permissionsList').innerHTML = list;
+    }
+
+    function renderAll() {
+      renderDashboard();
+      renderRecordsTable();
+      renderStaffTable();
+      renderPermissions();
+    }
+
+    function openAddRecordModal() {
+      document.getElementById('recordForm').reset();
+      document.getElementById('recordId').value = '';
+      document.getElementById('recordModalTitle').textContent = 'Add Record';
+      document.getElementById('recordModal').classList.remove('hidden');
+    }
+
+    function closeRecordModal() {
+      document.getElementById('recordModal').classList.add('hidden');
+    }
+
+    function openAddStaffModal() {
+      document.getElementById('staffForm').reset();
+      document.getElementById('staffModal').classList.remove('hidden');
+    }
+
+    function closeStaffModal() {
+      document.getElementById('staffModal').classList.add('hidden');
+    }
+
+    function saveRecord(event) {
+      event.preventDefault();
+      const id = document.getElementById('recordId').value;
+      const record = {
+        id: id || Date.now(),
+        title: document.getElementById('recordTitle').value,
+        department: document.getElementById('recordDept').value,
+        category: document.getElementById('recordCategory').value,
+        owner: document.getElementById('recordOwner').value,
+        status: document.getElementById('recordStatus').value
       };
 
-      if (id) {
-        items = items.map(x => x.id === id ? obj : x);
-        logAction('UPDATE', obj.code);
+      const index = records.findIndex(item => item.id == id);
+      if (index >= 0) {
+        records[index] = record;
       } else {
-        items.push(obj);
-        logAction('CREATE', obj.code);
+        records.unshift(record);
       }
 
-      localStorage.setItem('emc_inventory', JSON.stringify(items));
-      closeModal();
+      closeRecordModal();
       renderAll();
     }
 
-    // Log Action
-    function logAction(action, code) {
-      const logs = JSON.parse(localStorage.getItem('emc_logs') || '[]');
-      logs.unshift({ action, code, time: new Date().toLocaleString() });
-      localStorage.setItem('emc_logs', JSON.stringify(logs.slice(0, 100)));
+    function editRecord(id) {
+      const record = records.find(item => item.id == id);
+      if (!record) return;
+      document.getElementById('recordId').value = record.id;
+      document.getElementById('recordTitle').value = record.title;
+      document.getElementById('recordDept').value = record.department;
+      document.getElementById('recordCategory').value = record.category;
+      document.getElementById('recordOwner').value = record.owner;
+      document.getElementById('recordStatus').value = record.status;
+      document.getElementById('recordModalTitle').textContent = 'Edit Record';
+      document.getElementById('recordModal').classList.remove('hidden');
     }
 
-    // Edit Item
-    function editItem(id) {
-      const it = items.find(x => x.id === id);
-      document.getElementById('editId').value = it.id;
-      document.getElementById('code').value = it.code;
-      document.getElementById('dept').value = it.dept;
-      document.getElementById('name').value = it.name;
-      document.getElementById('category').value = it.category;
-      document.getElementById('qty').value = it.qty;
-      document.getElementById('subcounty').value = it.subcounty || '';
-      document.getElementById('ward').value = it.ward || '';
-      document.getElementById('status').value = it.status;
-      document.getElementById('notes').value = it.notes || '';
-      document.getElementById('addModal').classList.remove('hidden');
+    function deleteRecord(id) {
+      const index = records.findIndex(item => item.id == id);
+      if (index >= 0) {
+        records.splice(index, 1);
+        renderAll();
+      }
     }
 
-    // Delete Item
-    function delItem(id) {
-      if (!confirm('Are you sure you want to delete this asset?')) return;
-      const item = items.find(x => x.id === id);
-      items = items.filter(x => x.id !== id);
-      localStorage.setItem('emc_inventory', JSON.stringify(items));
-      logAction('DELETE', item.code);
-      renderAll();
-    }
+    function saveStaff(event) {
+      event.preventDefault();
+      const name = document.getElementById('staffName').value.trim();
+      const department = document.getElementById('staffDept').value;
+      const role = document.getElementById('staffRole').value;
+      const selectedPermissions = [...document.querySelectorAll('.staff-permission:checked')].map(box => box.value);
 
-    // Open Add Modal
-    function openAdd() {
-      document.getElementById('itemForm').reset();
-      document.getElementById('editId').value = '';
-      document.getElementById('addModal').classList.remove('hidden');
-    }
+      const basePermissions = selectedPermissions.length ? selectedPermissions : ['view_records'];
 
-    // Close Modal
-    function closeModal() {
-      document.getElementById('addModal').classList.add('hidden');
-    }
-
-    // Export CSV
-    function exportCSV() {
-      let csv = 'Code,Department,Name,Category,Qty,SubCounty,Ward,Status,Notes\n';
-      items.forEach(it => {
-        csv += `"${it.code}","${it.dept}","${it.name}","${it.category}",${it.qty},"${it.subcounty}","${it.ward}","${it.status}","${it.notes}"\n`;
+      users.push({
+        id: 'staff-' + Date.now(),
+        name,
+        role,
+        department,
+        permissions: role === 'department_head' ? ['view_records','create_records','edit_records','approve_records','export_reports','manage_staff'] : basePermissions
       });
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `inventory_${new Date().getTime()}.csv`;
-      a.click();
+
+      closeStaffModal();
+      renderAll();
     }
 
-    // Load Sample Data
-    function loadSampleData(reload = true) {
-      if (!reload && items.length > 0) return;
-      const sample = [
-        { id: '1', code: 'EMC/LAND/001', dept: 'Lands', name: 'Parcel Iten Block 3/45', category: 'Land Parcel', qty: 1, subcounty: 'Keiyo North', ward: 'Tambach', status: 'Available', notes: '' },
-        { id: '2', code: 'EMC/PLAN/001', dept: 'Physical Planning', name: 'Zoning Map Equipment', category: 'Software', qty: 2, subcounty: 'Urban', ward: 'CBD', status: 'In Use', notes: '' },
-        { id: '3', code: 'EMC/HOUS/001', dept: 'Housing', name: 'Office Chairs', category: 'Furniture', qty: 12, subcounty: '', ward: '', status: 'In Use', notes: '' },
-        { id: '4', code: 'EMC/URB/001', dept: 'Urban Development', name: 'Urban Planning Software', category: 'Software', qty: 1, subcounty: '', ward: '', status: 'In Use', notes: '' },
-        { id: '5', code: 'EMC/LAND/002', dept: 'Lands', name: 'Survey Equipment', category: 'Equipment', qty: 3, subcounty: 'Keiyo North', ward: 'Tambach', status: 'Under Maintenance', notes: '' }
-      ];
-      items = sample;
-      localStorage.setItem('emc_inventory', JSON.stringify(items));
-    }
+    document.querySelectorAll('.tab-btn').forEach(button => {
+      button.addEventListener('click', () => switchTab(button.dataset.tab));
+    });
+
+    document.getElementById('loginUser').addEventListener('change', () => {
+      const selected = getCurrentUser();
+      if (selected) {
+        document.getElementById('loginPassword').value = '123456';
+      }
+    });
+
+    document.getElementById('searchInput').addEventListener('input', renderRecordsTable);
+    document.getElementById('filterDept').addEventListener('change', renderRecordsTable);
+    document.getElementById('filterStatus').addEventListener('change', renderRecordsTable);
+
+    renderRecordsTable();
+    resetTabs();
   </script>
-
 </body>
 </html>
